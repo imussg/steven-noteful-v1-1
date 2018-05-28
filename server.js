@@ -1,62 +1,60 @@
 'use strict';
 
 const express = require('express');
-// Load array of notes
-const data = require('./db/notes');
-const { requestLogger } = require('./middleware/logger');
-
-const app = express();
+const morgan = require('morgan');
 
 const { PORT } = require('./config');
+const notesRouter = require('./routes/notes.router');
 
-app.use(requestLogger);
-// ADD STATIC SERVER HERE
+// Create an Express application
+const app = express();
+
+// Log all requests
+app.use(morgan('dev'));
+
+// Create a static webserver
 app.use(express.static('public'));
 
-app.get('/api/notes', (req, res) => {
-	res.json(data);
-});
+// Parse request body
+app.use(express.json());
 
-const findNote = function(id) {
-	// console.log(`the ID being "found": ${id}, and typeof: ${typeof id}`);
-	for(let i=0; i<data.length; i++) {
-		// console.log(`"data" note ID: ${data[i].id}, and typeof: ${typeof data[i].id}`);
-		if(id == data[i].id) {
-			return data[i];
-		}
-	}
-	return {error: "ID not found"};
-};
+// Mount router on "/api"
+app.use('/api', notesRouter);
 
-app.get('/api/notes/:id', (req, res) => {
-	res.json(findNote(req.params.id));
-});
-
-app.get('/boom', (req, res, next) => {
-	throw new Error('Boom!!');
-});
-
+// Catch-all 404
 app.use(function (req, res, next) {
-	var err = new Error('Not Found');
-	err.status = 404;
-	res.status(404).json({ message: 'Not Found' });
+  const err = new Error('Not Found');
+  err.status = 404;
+  next(err);
 });
 
+// Catch-all Error handler
 app.use(function (err, req, res, next) {
-	res.status(err.status || 500);
-	res.json({
-		message: err.message,
-		error: err
-	});
+  res.status(err.status || 500);
+  res.json({
+    message: err.message,
+    error: app.get('env') === 'development' ? err : {}
+  });
 });
+
+app.startServer = function (port) {
+  return new Promise((resolve, reject) => {
+    this.listen(port, function () {
+      this.stopServer = require('util').promisify(this.close);
+      resolve(this);
+    }).on('error', reject);
+  });
+};
 
 // Listen for incoming connections
 if (require.main === module) {
-	app.listen(PORT, function () {
-		console.info(`Server listening on ${this.address().port}`);
-	}).on('error', err => {
-		console.error(err);
-	});
+  app.startServer(PORT).catch(err => {
+    if (err.code === 'EADDRINUSE') {
+      const stars = '*'.repeat(80);
+      console.error(`${stars}\nEADDRINUSE (Error Address In Use). Please stop other web servers using port ${PORT}\n${stars}`);
+    }
+    console.error(err);
+  });
 }
 
-module.exports = app; // Export for testing
+module.exports = app;

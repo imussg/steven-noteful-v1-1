@@ -21,4 +21,34 @@ const api = {
       success: callback
     });
   }
+
+  update: function (id, obj) {
+    return $.ajax({
+      type: 'PUT',
+      url: `/api/notes/${id}`,
+      contentType: 'application/json',
+      dataType: 'json',
+      data: JSON.stringify(obj)
+    });
+  },
+
+  create: function (obj) {
+    return $.ajax({
+      type: 'POST',
+      url: '/api/notes',
+      contentType: 'application/json',
+      dataType: 'json',
+      processData: false,
+      data: JSON.stringify(obj)
+    });
+  },
+
+  remove: function (id) {
+    return $.ajax({
+      type: 'DELETE',
+      url: `/api/notes/${id}`,
+      dataType: 'json',
+    });
+  }
+
 };
