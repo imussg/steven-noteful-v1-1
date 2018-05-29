@@ -16,7 +16,11 @@ router.get('/notes', (req, res, next) => {
 
   notes.filter(searchTerm)
     .then(list => {
-      res.json(list);
+    	if(list) {
+    		res.json(list);
+    	} else {
+    		next();
+    	}
     })
     .catch(err => next(err));
 });
